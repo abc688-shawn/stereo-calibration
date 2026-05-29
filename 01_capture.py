@@ -137,10 +137,7 @@ def main():
         small_l = cv2.resize(vis_l, (disp_w, disp_h))
         small_r = cv2.resize(vis_r, (disp_w, disp_h))
 
-        # 拼接左右画面
-        canvas = np.hstack([small_l, small_r])
-
-        # 顶部状态栏
+        # 顶部状态栏（独立条带，36 px 高）
         status_color = (0, 220, 0) if both_found else (0, 180, 255)
         status_text  = (
             f"已采集: {saved_count} 对   "
@@ -148,20 +145,23 @@ def main():
                else ("左" if not found_l else "") +
                     ("右" if not found_r else "") + " 未检出")
         )
-        cv2.rectangle(canvas, (0, 0), (canvas.shape[1], 36), (30, 30, 30), -1)
-        cv2.putText(canvas, status_text, (10, 25),
+        status_bar = np.zeros((36, disp_w * 2, 3), dtype=np.uint8)
+        cv2.putText(status_bar, status_text, (10, 25),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, status_color, 2)
 
-        # 中间分割线
-        cv2.line(canvas, (disp_w, 0), (disp_w, disp_h + 36), (200, 200, 200), 2)
-        cv2.putText(canvas, "LEFT",  (10,  disp_h + 32), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (180, 180, 180), 1)
-        cv2.putText(canvas, "RIGHT", (disp_w + 10, disp_h + 32), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (180, 180, 180), 1)
+        # 图像行：左右并排 + 中间分割线
+        img_row = np.hstack([small_l, small_r])
+        cv2.line(img_row, (disp_w, 0), (disp_w, disp_h - 1), (200, 200, 200), 2)
 
-        canvas_full = np.zeros((disp_h + 50, disp_w * 2, 3), dtype=np.uint8)
-        canvas_full[:36, :] = canvas[:36, :]
-        canvas_full[36:36 + disp_h, :] = canvas[36:, :]
+        # 底部标签条（24 px 高）
+        label_bar = np.zeros((24, disp_w * 2, 3), dtype=np.uint8)
+        cv2.putText(label_bar, "LEFT",  (10, 18),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (180, 180, 180), 1)
+        cv2.putText(label_bar, "RIGHT", (disp_w + 10, 18),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (180, 180, 180), 1)
 
-        cv2.imshow("Stereo Capture  [s]Save  [q]Quit", canvas_full)
+        canvas = np.vstack([status_bar, img_row, label_bar])
+        cv2.imshow("Stereo Capture  [s]Save  [q]Quit", canvas)
         key = cv2.waitKey(1) & 0xFF
 
         if key == ord('q'):

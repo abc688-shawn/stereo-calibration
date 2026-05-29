@@ -173,6 +173,8 @@ def main():
     cv2.namedWindow(WIN_LEFT, cv2.WINDOW_NORMAL)
     cv2.resizeWindow(WIN_LEFT, config.FRAME_WIDTH, config.FRAME_HEIGHT)
     cv2.setMouseCallback(WIN_LEFT, mouse_callback)
+    cv2.namedWindow(WIN_DISP, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(WIN_DISP, config.FRAME_WIDTH, config.FRAME_HEIGHT)
 
     print("\n[信息] 实时测距中，点击左视图画面任意位置查询距离...\n")
 
@@ -234,9 +236,6 @@ def main():
             cv2.putText(disp_color, "DISPARITY  (blue=near, red=far, dark=invalid)",
                         (8, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
 
-            if WIN_DISP not in [cv2.getWindowProperty(WIN_DISP, cv2.WND_PROP_VISIBLE)]:
-                cv2.namedWindow(WIN_DISP, cv2.WINDOW_NORMAL)
-                cv2.resizeWindow(WIN_DISP, config.FRAME_WIDTH, config.FRAME_HEIGHT)
             cv2.imshow(WIN_DISP, disp_color)
 
         frame_count += 1
