@@ -118,24 +118,23 @@ def main():
         _, frame_l = cap_l.retrieve()
         _, frame_r = cap_r.retrieve()
 
-        gray_l = cv2.cvtColor(frame_l, cv2.COLOR_BGR2GRAY)
-        gray_r = cv2.cvtColor(frame_r, cv2.COLOR_BGR2GRAY)
-
-        # 棋盘格检测
-        found_l, corners_l = detect_corners(gray_l, board_size)
-        found_r, corners_r = detect_corners(gray_r, board_size)
-        both_found = found_l and found_r
-
-        # 可视化叠加
-        vis_l = draw_preview(frame_l, found_l, corners_l, board_size)
-        vis_r = draw_preview(frame_r, found_r, corners_r, board_size)
-
         # 缩放为 640 宽（保持比例）用于显示，避免窗口过大
         disp_w = 640
         scale  = disp_w / config.FRAME_WIDTH
         disp_h = int(config.FRAME_HEIGHT * scale)
-        small_l = cv2.resize(vis_l, (disp_w, disp_h))
-        small_r = cv2.resize(vis_r, (disp_w, disp_h))
+        small_l = cv2.resize(frame_l, (disp_w, disp_h))
+        small_r = cv2.resize(frame_r, (disp_w, disp_h))
+
+        # 棋盘格检测在缩放图上做（速度快），仅用于实时预览
+        gray_small_l = cv2.cvtColor(small_l, cv2.COLOR_BGR2GRAY)
+        gray_small_r = cv2.cvtColor(small_r, cv2.COLOR_BGR2GRAY)
+        found_l, corners_l = detect_corners(gray_small_l, board_size)
+        found_r, corners_r = detect_corners(gray_small_r, board_size)
+        both_found = found_l and found_r
+
+        # 可视化叠加（在小图上画）
+        small_l = draw_preview(small_l, found_l, corners_l, board_size)
+        small_r = draw_preview(small_r, found_r, corners_r, board_size)
 
         # 顶部状态栏（独立条带，36 px 高）
         status_color = (0, 220, 0) if both_found else (0, 180, 255)
@@ -168,6 +167,14 @@ def main():
             break
         elif key == ord('s'):
             if both_found or force_save:
+                # 保存前在全分辨率图上再确认一次（保证标定质量）
+                gray_l = cv2.cvtColor(frame_l, cv2.COLOR_BGR2GRAY)
+                gray_r = cv2.cvtColor(frame_r, cv2.COLOR_BGR2GRAY)
+                ok_l, _ = detect_corners(gray_l, board_size)
+                ok_r, _ = detect_corners(gray_r, board_size)
+                if not force_save and not (ok_l and ok_r):
+                    print("  [跳过] 全分辨率检测未通过，请重试。")
+                    continue
                 idx = saved_count
                 l_path = os.path.join(config.LEFT_DIR,  f"left_{idx:02d}.png")
                 r_path = os.path.join(config.RIGHT_DIR, f"right_{idx:02d}.png")
