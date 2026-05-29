@@ -166,7 +166,10 @@ def main():
         sys.exit(1)
 
     lm1, lm2, rm1, rm2, image_size = utils.build_rectify_maps(params)
-    Q   = params["Q"]
+    Q   = params["Q"].copy()
+    # 若 Q[3,2] < 0，Z 值会为负；翻转底行使 Z 恢复为正值
+    if Q[3, 2] < 0:
+        Q[3, :] = -Q[3, :]
     roi = params.get("roi")   # (x, y, w, h) 公共有效区域，黑边外的像素视差无意义
     state.roi = roi
 
