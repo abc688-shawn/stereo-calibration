@@ -33,6 +33,8 @@ def save_stereo_params(path: str, params: dict):
     for key in ("K1", "D1", "K2", "D2", "R", "T", "E", "F",
                 "R1", "R2", "P1", "P2", "Q"):
         fs.write(key, params[key])
+    if "roi" in params:
+        fs.write("roi", params["roi"])
     fs.release()
     print(f"[utils] 标定参数已保存到: {path}")
 
@@ -52,6 +54,8 @@ def load_stereo_params(path: str) -> dict:
     for key in ("K1", "D1", "K2", "D2", "R", "T", "E", "F",
                 "R1", "R2", "P1", "P2", "Q"):
         params[key] = fs.getNode(key).mat()
+    roi_node = fs.getNode("roi")
+    params["roi"] = roi_node.mat().astype(int).ravel().tolist() if not roi_node.empty() else None
     fs.release()
     return params
 

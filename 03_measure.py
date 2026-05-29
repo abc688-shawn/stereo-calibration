@@ -35,6 +35,7 @@ class AppState:
         self.click_info   = []            # 点击记录: list of (x, y, dist_mm, z_mm)
         self.show_disp    = True          # 是否显示视差图窗口
         self.frame_size   = None          # (width, height)
+        self.roi          = None          # 公共有效 ROI (x, y, w, h)
 
 
 state = AppState()
@@ -71,7 +72,11 @@ def mouse_callback(event, x, y, flags, param):
                   f"欧氏距离={dist_m:.3f} m   "
                   f"[X={X/1000:.3f}m  Y={Y/1000:.3f}m  Z={Z/1000:.3f}m]")
         else:
-            print(f"  点 ({x:4d}, {y:4d})  |  视差无效（遮挡/平滑区域/超出测量范围）")
+            roi = state.roi
+            in_roi = (roi is None or
+                      (roi[0] <= x < roi[0]+roi[2] and roi[1] <= y < roi[1]+roi[3]))
+            hint = "纹理不足/遮挡/超出范围" if in_roi else "点击在黑边区域外，请点击画面中央有内容的区域"
+            print(f"  点 ({x:4d}, {y:4d})  |  视差无效（{hint}）")
             state.click_info.append((x, y, None, None))
 
     elif event == cv2.EVENT_RBUTTONDOWN:
@@ -161,7 +166,9 @@ def main():
         sys.exit(1)
 
     lm1, lm2, rm1, rm2, image_size = utils.build_rectify_maps(params)
-    Q = params["Q"]
+    Q   = params["Q"]
+    roi = params.get("roi")   # (x, y, w, h) 公共有效区域，黑边外的像素视差无意义
+    state.roi = roi
 
     # 打开相机
     try:
@@ -216,9 +223,16 @@ def main():
         # 绘制左视图标注
         vis_left = draw_annotations(rect_l, state.click_info)
 
+        # 画出有效测距区域边框（绿色虚线框）
+        if roi is not None:
+            rx, ry, rw, rh = roi
+            cv2.rectangle(vis_left, (rx, ry), (rx + rw, ry + rh), (0, 255, 80), 2)
+            cv2.putText(vis_left, "valid", (rx + 4, ry + 18),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 80), 1)
+
         # HUD 信息
         cv2.rectangle(vis_left, (0, 0), (vis_left.shape[1], 28), (20, 20, 20), -1)
-        cv2.putText(vis_left, "LEFT RECTIFIED  |  Click to measure distance",
+        cv2.putText(vis_left, "LEFT RECTIFIED  |  Click inside green box to measure",
                     (8, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (180, 220, 180), 1)
 
         cv2.imshow(WIN_LEFT, vis_left)

@@ -172,7 +172,7 @@ def stereo_rectify(K1, D1, K2, D2, R, T, image_size):
     print(f"  P2: {P2}")
     print(f"  Q 矩阵:\n{Q}")
     print(f"  左有效 ROI: {roi_l}  右有效 ROI: {roi_r}")
-    return R1, R2, P1, P2, Q
+    return R1, R2, P1, P2, Q, roi_l, roi_r
 
 
 def save_verification_image(params, pairs):
@@ -233,7 +233,15 @@ def main():
     )
 
     # 5. 立体校正
-    R1, R2, P1, P2, Q = stereo_rectify(K1, D1, K2, D2, R, T, image_size)
+    R1, R2, P1, P2, Q, roi_l, roi_r = stereo_rectify(K1, D1, K2, D2, R, T, image_size)
+
+    # 两侧 ROI 的交集作为有效测距区域
+    x  = max(roi_l[0], roi_r[0])
+    y  = max(roi_l[1], roi_r[1])
+    x2 = min(roi_l[0] + roi_l[2], roi_r[0] + roi_r[2])
+    y2 = min(roi_l[1] + roi_l[3], roi_r[1] + roi_r[3])
+    roi_common = (x, y, x2 - x, y2 - y)
+    print(f"  公共有效 ROI: {roi_common}")
 
     # 6. 保存参数
     params = {
@@ -246,6 +254,7 @@ def main():
         "R1": R1, "R2": R2,
         "P1": P1, "P2": P2,
         "Q":  Q,
+        "roi": np.array(roi_common, dtype=np.int32),
     }
     utils.save_stereo_params(config.PARAM_FILE, params)
 
