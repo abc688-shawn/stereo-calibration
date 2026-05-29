@@ -35,8 +35,15 @@ def open_camera(cam_id: int, width: int, height: int) -> cv2.VideoCapture:
         )
     cap.set(cv2.CAP_PROP_FRAME_WIDTH,  width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-    # 关闭自动曝光以减少左右曝光差异（部分相机不支持，忽略失败）
-    cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
+    # 丢弃前 5 帧：部分相机开启后首帧为全黑，需要预热
+    for _ in range(5):
+        cap.read()
+    actual_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    actual_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    if actual_w != width or actual_h != height:
+        print(f"  [警告] 摄像头 {cam_id} 不支持 {width}x{height}，"
+              f"实际分辨率为 {actual_w}x{actual_h}。\n"
+              f"         请将 config.py 中 FRAME_WIDTH/HEIGHT 改为 {actual_w}x{actual_h}。")
     return cap
 
 

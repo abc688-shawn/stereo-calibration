@@ -131,6 +131,8 @@ def open_cameras():
             )
         cap.set(cv2.CAP_PROP_FRAME_WIDTH,  config.FRAME_WIDTH)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.FRAME_HEIGHT)
+        for _ in range(5):
+            cap.read()
     return cap_l, cap_r
 
 
