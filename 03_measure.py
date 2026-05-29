@@ -121,19 +121,22 @@ def build_sgbm():
     return sgbm
 
 
-def open_cameras():
-    cap_l = cv2.VideoCapture(config.LEFT_CAM_ID)
-    cap_r = cv2.VideoCapture(config.RIGHT_CAM_ID)
-    for cap, cid in [(cap_l, config.LEFT_CAM_ID), (cap_r, config.RIGHT_CAM_ID)]:
-        if not cap.isOpened():
-            raise RuntimeError(
-                f"无法打开摄像头 {cid}。请检查设备连接，并确认 config.py 中的索引正确。"
-            )
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH,  config.FRAME_WIDTH)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.FRAME_HEIGHT)
-        for _ in range(5):
-            cap.read()
-    return cap_l, cap_r
+def open_camera():
+    cap = cv2.VideoCapture(config.CAM_ID)
+    if not cap.isOpened():
+        raise RuntimeError(
+            f"无法打开摄像头 {config.CAM_ID}。请检查设备连接，并确认 config.py 中 CAM_ID 正确。"
+        )
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH,  config.FRAME_WIDTH)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.FRAME_HEIGHT)
+    for _ in range(10):
+        cap.read()
+    return cap
+
+
+def split_frame(frame):
+    mid = frame.shape[1] // 2
+    return frame[:, :mid].copy(), frame[:, mid:].copy()
 
 
 def main():
@@ -162,35 +165,35 @@ def main():
 
     # 打开相机
     try:
-        cap_l, cap_r = open_cameras()
+        cap = open_camera()
     except RuntimeError as e:
         print(f"[错误] {e}")
         sys.exit(1)
 
     sgbm = build_sgbm()
 
+    eye_w = config.FRAME_WIDTH // 2
+    eye_h = config.FRAME_HEIGHT
+
     # 窗口设置
     WIN_LEFT = "Left Rectified  [Click to measure]"
     WIN_DISP = "Disparity Map"
     cv2.namedWindow(WIN_LEFT, cv2.WINDOW_NORMAL)
-    cv2.resizeWindow(WIN_LEFT, config.FRAME_WIDTH, config.FRAME_HEIGHT)
+    cv2.resizeWindow(WIN_LEFT, eye_w, eye_h)
     cv2.setMouseCallback(WIN_LEFT, mouse_callback)
     cv2.namedWindow(WIN_DISP, cv2.WINDOW_NORMAL)
-    cv2.resizeWindow(WIN_DISP, config.FRAME_WIDTH, config.FRAME_HEIGHT)
+    cv2.resizeWindow(WIN_DISP, eye_w, eye_h)
 
     print("\n[信息] 实时测距中，点击左视图画面任意位置查询距离...\n")
 
     frame_count = 0
     while True:
-        # 同步取帧
-        ret_l = cap_l.grab()
-        ret_r = cap_r.grab()
-        if not ret_l or not ret_r:
+        ret, raw = cap.read()
+        if not ret or raw is None:
             print("[警告] 取帧失败，跳过...")
             continue
 
-        _, frame_l = cap_l.retrieve()
-        _, frame_r = cap_r.retrieve()
+        frame_l, frame_r = split_frame(raw)
 
         # 立体校正（去畸变 + 极线对齐）
         rect_l = cv2.remap(frame_l, lm1, lm2, cv2.INTER_LINEAR)
@@ -254,8 +257,7 @@ def main():
             state.click_info.clear()
             print("  [已清除] 点击记录已清空。")
 
-    cap_l.release()
-    cap_r.release()
+    cap.release()
     cv2.destroyAllWindows()
     print("\n测距程序已退出。")
 
