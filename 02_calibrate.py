@@ -165,7 +165,7 @@ def stereo_rectify(K1, D1, K2, D2, R, T, image_size):
     R1, R2, P1, P2, Q, roi_l, roi_r = cv2.stereoRectify(
         K1, D1, K2, D2, image_size, R, T,
         flags=cv2.CALIB_ZERO_DISPARITY,
-        alpha=0       # alpha=0: 裁剪到有效像素；alpha=1: 保留全部像素（含黑边）
+        alpha=1       # alpha=1: 保留全部像素（含黑边），适合收束型相机模组
     )
     print("\n[立体校正]")
     print(f"  P1: {P1}")
